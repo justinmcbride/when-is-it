@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNow } from '../hooks.ts'
+import { formatLongDate, formatTime } from '../lib/format.ts'
 import { detectViewerZone, offsetLabel, resolveEvent } from '../lib/time.ts'
 import { parseEventHash, serializeEvent, shareUrl } from '../lib/url.ts'
 import CopyButton from './CopyButton.tsx'
@@ -38,11 +39,9 @@ export default function EventPage({ hash }: { hash: string }) {
       <h1>{spec.title || 'Event'}</h1>
       {resolved.ok && (
         <p className="subtitle">
-          {resolved.event.start.toFormat('cccc d LLLL yyyy, HH:mm')}
+          {formatLongDate(resolved.event.start)}, {formatTime(resolved.event.start)}
           {resolved.event.end &&
-            ` – ${resolved.event.end.toFormat(
-              resolved.event.end.hasSame(resolved.event.start, 'day') ? 'HH:mm' : 'cccc d LLLL, HH:mm',
-            )}`}{' '}
+            ` – ${resolved.event.end.hasSame(resolved.event.start, 'day') ? '' : `${formatLongDate(resolved.event.end)}, `}${formatTime(resolved.event.end)}`}{' '}
           in <strong>{spec.zone}</strong> ({offsetLabel(resolved.event.start)})
         </p>
       )}

@@ -1,6 +1,6 @@
 import { DateTime } from 'luxon'
 import { describe, expect, it } from 'vitest'
-import { buildRow, buildTimeline, computeWindow, hourKind, intersect, position } from './timeline'
+import { buildRow, buildTimeline, computeWindow, hourKind, position } from './timeline'
 
 const HOUR = 3_600_000
 const ms = (isoStr: string, zone = 'UTC') => DateTime.fromISO(isoStr, { zone }).toMillis()
@@ -40,9 +40,8 @@ describe('buildRow', () => {
       expect(row.segments[i].startMs).toBe(row.segments[i - 1].endMs)
       expect(row.segments[i].kind).not.toBe(row.segments[i - 1].kind)
     }
-    // UTC midnight is 18:00 MDT on the previous day.
-    expect(row.startDateLabel).toBe('Sun 25 Oct')
-    expect(row.days).toEqual([{ ms: ms('2026-10-26T06:00'), label: 'Mon 26 Oct' }])
+    // UTC midnight is 18:00 MDT on the previous day; the only local midnight is 06:00 UTC.
+    expect(row.days).toEqual([ms('2026-10-26T06:00')])
     const work = row.segments.find((s) => s.kind === 'work')!
     expect(DateTime.fromMillis(work.startMs, { zone: 'America/Denver' }).hour).toBe(9)
     expect(work.endMs - work.startMs).toBe(8 * HOUR)
@@ -71,7 +70,7 @@ describe('buildRow', () => {
 })
 
 describe('buildTimeline', () => {
-  it('computes overlaps between zones', () => {
+  it('builds one row per zone on a shared window', () => {
     const start = ms('2026-10-26T17:30', 'America/Denver')
     const t = buildTimeline({
       zones: [
@@ -81,37 +80,16 @@ describe('buildTimeline', () => {
       startMs: start,
       endMs: start + HOUR,
     })
-    expect(t.rows).toHaveLength(2)
-    // Denver 09-17 MDT is 15-23 UTC; London 09-17 GMT is 09-17 UTC => overlap 15-17 UTC on the 26th.
-    expect(t.workOverlap).toEqual([{ startMs: ms('2026-10-26T15:00'), endMs: ms('2026-10-26T17:00') }])
-    expect(t.awakeOverlap.length).toBeGreaterThan(0)
+    expect(t.rows.map((r) => r.zone)).toEqual(['America/Denver', 'Europe/London'])
+    for (const r of t.rows) {
+      expect(r.segments[0].startMs).toBe(t.windowStartMs)
+      expect(r.segments.at(-1)!.endMs).toBe(t.windowEndMs)
+    }
+    expect(t).not.toHaveProperty('workOverlap')
     expect(position(t, t.windowStartMs)).toBe(0)
     expect(position(t, t.windowEndMs)).toBe(1)
     const p = position(t, start)
     expect(p).toBeGreaterThan(0.4)
     expect(p).toBeLessThan(0.6)
-  })
-
-  it('reports no work overlap for far-apart zones', () => {
-    const start = ms('2026-10-26T12:00')
-    const t = buildTimeline({
-      zones: [
-        { zone: 'America/Los_Angeles', label: 'LA' },
-        { zone: 'Asia/Kolkata', label: 'Kolkata' },
-      ],
-      startMs: start,
-    })
-    expect(t.workOverlap).toEqual([])
-  })
-})
-
-describe('intersect', () => {
-  it('intersects sorted interval lists', () => {
-    expect(
-      intersect(
-        [{ startMs: 0, endMs: 10 }, { startMs: 20, endMs: 30 }],
-        [{ startMs: 5, endMs: 25 }],
-      ),
-    ).toEqual([{ startMs: 5, endMs: 10 }, { startMs: 20, endMs: 25 }])
   })
 })

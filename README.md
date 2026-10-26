@@ -15,10 +15,12 @@ Everything lives in the URL: there is no backend, no storage and no accounts.
   - one bar per time zone on a shared time axis, shaded for working hours (09–17), off hours and
     night (22–07) in that zone's local time;
   - day boundaries and local hour ticks per zone (correct for DST and :30/:45 offsets);
-  - an **Overlap** bar showing when everyone is awake / in working hours;
   - the event span and a live **now** marker overlaid across every zone.
 - DST-aware: times that don't exist (spring-forward gap) are moved forward with a warning; times that
-  happen twice (fall-back overlap) use the first occurrence, also with a warning.
+  happen twice (fall-back overlap) use the first occurrence, also with a warning. These notices
+  only appear for a time that falls inside a DST transition.
+- Displayed times follow the browser locale's 12h/24h hour cycle (e.g. `en-US` → 5:30 PM,
+  `en-GB` → 17:30). The URL always stores 24h wall time.
 
 ## URL format
 
@@ -62,8 +64,9 @@ Stack: Vite + React + TypeScript, [Luxon](https://moment.github.io/luxon/) for t
 Core logic is framework-free and unit-tested in `src/lib`:
 
 - `url.ts` — parse / serialize the URL format
-- `time.ts` — wall time ⇄ instant conversion with DST gap/overlap detection, formatting helpers
-- `timeline.ts` — the pure chart model (window, per-zone segments, ticks, day markers, overlaps)
+- `time.ts` — wall time ⇄ instant conversion with DST gap/overlap detection
+- `format.ts` — locale-aware (12h/24h) display formatting
+- `timeline.ts` — the pure chart model (window, per-zone segments, ticks, day markers)
 - `form.ts` — create-form state ⇄ event conversion
 - `zoneRows.ts` — which zones to show and in what order
 

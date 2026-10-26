@@ -1,13 +1,12 @@
 import { DateTime } from 'luxon'
 import { useMemo } from 'react'
 import { calendarDayDiff, eventStatus, offsetLabel, resolveEvent, zoneCity } from '../lib/time.ts'
+import { formatShortDate, formatTime, formatTimeRange } from '../lib/format.ts'
 import { buildTimeline } from '../lib/timeline.ts'
 import type { EventSpec } from '../lib/types.ts'
 import Timeline from './Timeline.tsx'
 import { zoneRows } from '../lib/zoneRows.ts'
 
-const TIME: Intl.DateTimeFormatOptions = { hour: 'numeric', minute: '2-digit' }
-const DATE: Intl.DateTimeFormatOptions = { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }
 
 export default function EventDetails({
   spec,
@@ -90,7 +89,7 @@ export default function EventDetails({
         <Timeline
           model={timeline}
           nowMs={nowMs}
-          sublabels={local.map((r) => `${r.s.toFormat('HH:mm')}${r.e ? `–${r.e.toFormat('HH:mm')}` : ''} ${r.s.offsetNameShort ?? ''}`)}
+          sublabels={local.map((r) => `${formatTimeRange(r.s, r.e)} ${r.s.offsetNameShort ?? ''}`)}
         />
       )}
     </div>
@@ -101,14 +100,14 @@ function Moment({ dt, dayDiff }: { dt: DateTime; dayDiff: number }) {
   return (
     <>
       <div className="moment-time">
-        {dt.toLocaleString(TIME)}
+        {formatTime(dt)}
         {dayDiff !== 0 && (
           <span className="day-diff" title="Compared with the date in the event's time zone">
             {dayDiff > 0 ? `+${dayDiff}` : dayDiff} day
           </span>
         )}
       </div>
-      <div className="moment-date">{dt.toLocaleString(DATE)}</div>
+      <div className="moment-date">{formatShortDate(dt)}</div>
     </>
   )
 }

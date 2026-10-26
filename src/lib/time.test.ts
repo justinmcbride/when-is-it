@@ -4,6 +4,7 @@ import {
   calendarDayDiff,
   eventStatus,
   formatDuration,
+  listZones,
   offsetLabel,
   resolveEvent,
   resolveWallTime,
@@ -84,8 +85,34 @@ describe('resolveEvent', () => {
     const r = resolveEvent({ start: wt(2026, 3, 8, 2, 30), end: wt(2026, 11, 1, 1, 30), zone: 'America/Denver', extraZones: [] })
     if (!r.ok) throw new Error(r.error)
     expect(r.event.notes).toHaveLength(2)
-    expect(r.event.notes[0]).toContain("doesn't exist")
+    expect(r.event.notes[0]).toContain('Clocks in America/Denver jump forward')
+    expect(r.event.notes[0]).toContain('never happens')
+    expect(r.event.notes[1]).toContain('fall back')
     expect(r.event.notes[1]).toContain('happens twice')
+  })
+
+  it('only flags the real transition hours (one gap, one repeat per year in Denver)', () => {
+    const gaps: string[] = []
+    const repeats: string[] = []
+    let d = DateTime.fromObject({ year: 2026, month: 1, day: 1 }, { zone: 'utc' })
+    while (d.year === 2026) {
+      const r = resolveWallTime(wt(d.year, d.month, d.day, d.hour, 30), 'America/Denver')
+      if (r.gap) gaps.push(d.toFormat('yyyy-LL-dd HH'))
+      if (r.ambiguous) repeats.push(d.toFormat('yyyy-LL-dd HH'))
+      d = d.plus({ hours: 1 })
+    }
+    expect(gaps).toEqual(['2026-03-08 02'])
+    expect(repeats).toEqual(['2026-11-01 01'])
+  })
+
+  it('adds no notes on an ordinary date in any zone', () => {
+    for (const zone of listZones()) {
+      for (const hour of [0, 2, 9, 17, 23]) {
+        const r = resolveEvent({ start: wt(2026, 10, 26, hour, 30), zone, extraZones: [] })
+        if (!r.ok) throw new Error(`${zone}: ${r.error}`)
+        expect(r.event.notes, zone).toEqual([])
+      }
+    }
   })
 
   it('rejects an end that is not after the start once resolved', () => {

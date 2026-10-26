@@ -1,6 +1,7 @@
 import { DateTime } from 'luxon'
+import { formatHour, formatHourOfDay, formatTime } from '../lib/format.ts'
 import type { Timeline as TimelineModel } from '../lib/timeline.ts'
-import { position } from '../lib/timeline.ts'
+import { NIGHT_END, NIGHT_START, WORK_END, WORK_START, position } from '../lib/timeline.ts'
 
 export interface TimelineProps {
   model: TimelineModel
@@ -13,8 +14,11 @@ const pct = (f: number) => `${(Math.min(1, Math.max(0, f)) * 100).toFixed(3)}%`
 
 const KIND_TEXT = { night: 'night', off: 'off hours', work: 'working hours' } as const
 
+const DAY_LABEL: Intl.DateTimeFormatOptions = { weekday: 'short', day: 'numeric', month: 'short' }
+
 export default function Timeline({ model, nowMs, sublabels }: TimelineProps) {
   const pos = (ms: number) => position(model, ms)
+  const at = (ms: number, zone: string) => DateTime.fromMillis(ms, { zone })
   const { startMs, endMs } = model.event
   const evLeft = pos(startMs)
   const evRight = pos(endMs ?? startMs)
@@ -36,54 +40,29 @@ export default function Timeline({ model, nowMs, sublabels }: TimelineProps) {
                   key={s.startMs}
                   className={`tl-seg tl-${s.kind}`}
                   style={{ left: pct(pos(s.startMs)), width: pct(pos(s.endMs) - pos(s.startMs)) }}
-                  title={`${fmt(s.startMs, row.zone)}–${fmt(s.endMs, row.zone)} ${KIND_TEXT[s.kind]} in ${row.zone}`}
+                  title={`${formatTime(at(s.startMs, row.zone))}–${formatTime(at(s.endMs, row.zone))} ${KIND_TEXT[s.kind]} in ${row.zone}`}
                 />
               ))}
-              {(row.days.length === 0 || pos(row.days[0].ms) > 0.15) && (
-                <span className="tl-date tl-date-start">{row.startDateLabel}</span>
+              {(row.days.length === 0 || pos(row.days[0]) > 0.15) && (
+                <span className="tl-date tl-date-start">
+                  {at(model.windowStartMs, row.zone).toLocaleString(DAY_LABEL)}
+                </span>
               )}
-              {row.days.map((d) => (
-                <div key={d.ms} className="tl-day" style={{ left: pct(pos(d.ms)) }}>
-                  <span className="tl-date">{d.label}</span>
+              {row.days.map((ms) => (
+                <div key={ms} className="tl-day" style={{ left: pct(pos(ms)) }}>
+                  <span className="tl-date">{at(ms, row.zone).toLocaleString(DAY_LABEL)}</span>
                 </div>
               ))}
-              {row.ticks.filter((t) => pos(t.ms) > 0.015 && pos(t.ms) < 0.985).map((t) => (
-                <span key={t.ms} className="tl-tick" style={{ left: pct(pos(t.ms)) }}>
-                  {t.label}
-                </span>
-              ))}
+              {row.ticks
+                .filter((t) => pos(t.ms) > 0.015 && pos(t.ms) < 0.985)
+                .map((t) => (
+                  <span key={t.ms} className="tl-tick" style={{ left: pct(pos(t.ms)) }}>
+                    {formatHour(at(t.ms, row.zone))}
+                  </span>
+                ))}
             </div>
           </div>
         ))}
-
-        {model.rows.length > 1 && (
-          <div className="tl-row tl-overlap-row">
-            <div className="tl-label">
-              <div className="tl-label-main">Overlap</div>
-              <div className="tl-label-sub">
-                {model.workOverlap.length ? 'everyone working / awake' : 'no shared working hours'}
-              </div>
-            </div>
-            <div className="tl-track tl-track-overlap">
-              {model.awakeOverlap.map((iv) => (
-                <div
-                  key={`a${iv.startMs}`}
-                  className="tl-seg tl-awake-all"
-                  style={{ left: pct(pos(iv.startMs)), width: pct(pos(iv.endMs) - pos(iv.startMs)) }}
-                  title="Nobody is in night hours"
-                />
-              ))}
-              {model.workOverlap.map((iv) => (
-                <div
-                  key={`w${iv.startMs}`}
-                  className="tl-seg tl-work-all"
-                  style={{ left: pct(pos(iv.startMs)), width: pct(pos(iv.endMs) - pos(iv.startMs)) }}
-                  title="Everyone is in working hours"
-                />
-              ))}
-            </div>
-          </div>
-        )}
 
         <div className="tl-overlay" aria-hidden="true">
           <div
@@ -101,16 +80,19 @@ export default function Timeline({ model, nowMs, sublabels }: TimelineProps) {
       </div>
 
       <div className="tl-legend">
-        <span><i className="sw tl-work" /> working (09–17)</span>
-        <span><i className="sw tl-off" /> off hours</span>
-        <span><i className="sw tl-night" /> night (22–07)</span>
-        <span><i className="sw sw-event" /> event</span>
-        <span><i className="sw sw-now" /> now</span>
+        <span>
+          <i className="sw tl-work" /> working ({formatHourOfDay(WORK_START)}–{formatHourOfDay(WORK_END)})
+        </span>
+        <span>
+          <i className="sw tl-night" /> night ({formatHourOfDay(NIGHT_START)}–{formatHourOfDay(NIGHT_END)})
+        </span>
+        <span>
+          <i className="sw sw-event" /> event
+        </span>
+        <span>
+          <i className="sw sw-now" /> now
+        </span>
       </div>
     </>
   )
-}
-
-function fmt(ms: number, zone: string) {
-  return DateTime.fromMillis(ms, { zone }).toFormat('HH:mm')
 }

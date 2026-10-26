@@ -1,4 +1,5 @@
 import { DateTime, IANAZone } from 'luxon'
+import { formatShortDate, formatTime } from './format'
 import type { EventSpec, WallTime } from './types'
 
 export function isValidZone(zone: string): boolean {
@@ -98,14 +99,17 @@ export function resolveEvent(spec: EventSpec): ResolveResult {
 }
 
 function noteDst(which: string, wt: WallTime, r: ResolvedWallTime, zone: string, notes: string[]) {
-  const wall = `${pad2(wt.hour)}:${pad2(wt.minute)}`
+  if (!r.gap && !r.ambiguous) return
+  const asWritten = DateTime.fromObject({ ...wt }, { zone: 'utc' })
+  const wall = formatTime(asWritten)
+  const day = formatShortDate(asWritten)
   if (r.gap) {
     notes.push(
-      `The ${which} time ${wall} doesn't exist in ${zone} on that date (daylight saving starts), so it was moved to ${r.dt.toFormat('HH:mm')}.`,
+      `Clocks in ${zone} jump forward on ${day}, so ${wall} never happens that day. The ${which} time is shown as ${formatTime(r.dt)} instead.`,
     )
-  } else if (r.ambiguous) {
+  } else {
     notes.push(
-      `The ${which} time ${wall} happens twice in ${zone} on that date (daylight saving ends); the first occurrence (${offsetLabel(r.dt)}) is used.`,
+      `Clocks in ${zone} fall back on ${day}, so ${wall} happens twice that day. The ${which} time uses the first one (${offsetLabel(r.dt)}).`,
     )
   }
 }

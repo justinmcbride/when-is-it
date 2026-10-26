@@ -41,7 +41,7 @@ describe('formToSpec', () => {
 
   it('reports DST notes', () => {
     const r = formToSpec({ ...base, date: '2026-03-08', endDate: '2026-03-08', start: '02:30', end: '04:00' })
-    expect(r.ok && r.notes[0]).toContain("doesn't exist")
+    expect(r.ok && r.notes[0]).toContain('never happens')
   })
 
   it('round-trips through specToForm', () => {
@@ -57,6 +57,15 @@ describe('defaultForm', () => {
     const f = defaultForm('Asia/Kolkata', Date.UTC(2026, 9, 26, 18, 40))
     // 18:40 UTC = 00:10 IST on the 27th -> next hour 01:00.
     expect(f).toMatchObject({ date: '2026-10-27', start: '01:00', end: '02:00', zone: 'Asia/Kolkata' })
+  })
+
+  it('never produces a DST gap notice, even on transition days', () => {
+    // Every half hour across 2026 in a DST-observing zone.
+    for (let t = Date.UTC(2026, 0, 1); t < Date.UTC(2027, 0, 1); t += 30 * 60_000) {
+      const r = formToSpec(defaultForm('America/Denver', t))
+      if (!r.ok) throw new Error(r.error)
+      expect(r.notes.filter((n) => n.includes('never happens'))).toEqual([])
+    }
   })
 })
 

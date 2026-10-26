@@ -29,12 +29,6 @@ export interface Tick {
   ms: number
   /** Local hour in the row's zone. */
   hour: number
-  label: string
-}
-
-export interface DayMarker {
-  ms: number
-  label: string
 }
 
 export interface TimelineRow {
@@ -42,10 +36,8 @@ export interface TimelineRow {
   label: string
   segments: Segment[]
   ticks: Tick[]
-  /** Local midnights inside the window. */
-  days: DayMarker[]
-  /** Local date at the left edge of the window. */
-  startDateLabel: string
+  /** Local midnights inside the window (ms). */
+  days: number[]
 }
 
 export interface Timeline {
@@ -54,10 +46,6 @@ export interface Timeline {
   tickStepHours: number
   rows: TimelineRow[]
   event: { startMs: number; endMs?: number }
-  /** Intervals where every row is inside working hours. */
-  workOverlap: Interval[]
-  /** Intervals where no row is in night hours. */
-  awakeOverlap: Interval[]
 }
 
 export interface TimelineInput {
@@ -92,7 +80,7 @@ export function tickStepFor(hours: number): number {
 export function buildRow(zone: string, label: string, win: Interval, tickStep: number): TimelineRow {
   const segments: Segment[] = []
   const ticks: Tick[] = []
-  const days: DayMarker[] = []
+  const days: number[] = []
   let cur = DateTime.fromMillis(win.startMs, { zone }).startOf('hour')
   while (cur.toMillis() < win.endMs) {
     let next = cur.plus({ hours: 1 }).startOf('hour')
@@ -106,58 +94,24 @@ export function buildRow(zone: string, label: string, win: Interval, tickStep: n
       else segments.push({ startMs: segStart, endMs: segEnd, kind })
     }
     if (cur.toMillis() >= win.startMs && cur.minute === 0) {
-      if (cur.hour === 0) days.push({ ms: cur.toMillis(), label: cur.toFormat('ccc d LLL') })
-      if (cur.hour % tickStep === 0) ticks.push({ ms: cur.toMillis(), hour: cur.hour, label: cur.toFormat('HH') })
+      if (cur.hour === 0) days.push(cur.toMillis())
+      if (cur.hour % tickStep === 0) ticks.push({ ms: cur.toMillis(), hour: cur.hour })
     }
     cur = next
   }
-  const startDateLabel = DateTime.fromMillis(win.startMs, { zone }).toFormat('ccc d LLL')
-  return { zone, label, segments, ticks, days, startDateLabel }
-}
-
-export function intersect(a: Interval[], b: Interval[]): Interval[] {
-  const out: Interval[] = []
-  let i = 0
-  let j = 0
-  while (i < a.length && j < b.length) {
-    const s = Math.max(a[i].startMs, b[j].startMs)
-    const e = Math.min(a[i].endMs, b[j].endMs)
-    if (e > s) out.push({ startMs: s, endMs: e })
-    if (a[i].endMs < b[j].endMs) i++
-    else j++
-  }
-  return out
-}
-
-function mergeIntervals(list: Interval[]): Interval[] {
-  const out: Interval[] = []
-  for (const iv of list) {
-    const prev = out[out.length - 1]
-    if (prev && prev.endMs >= iv.startMs) prev.endMs = Math.max(prev.endMs, iv.endMs)
-    else out.push({ ...iv })
-  }
-  return out
-}
-
-function rowIntervals(row: TimelineRow, pred: (k: HourKind) => boolean): Interval[] {
-  return mergeIntervals(row.segments.filter((s) => pred(s.kind)).map(({ startMs, endMs }) => ({ startMs, endMs })))
+  return { zone, label, segments, ticks, days }
 }
 
 export function buildTimeline(input: TimelineInput): Timeline {
   const win = computeWindow(input.startMs, input.endMs, input.minHours, input.padHours)
   const tickStepHours = tickStepFor((win.endMs - win.startMs) / HOUR)
   const rows = input.zones.map(({ zone, label }) => buildRow(zone, label, win, tickStepHours))
-  const all: Interval[] = [win]
-  const workOverlap = rows.reduce((acc, r) => intersect(acc, rowIntervals(r, (k) => k === 'work')), all)
-  const awakeOverlap = rows.reduce((acc, r) => intersect(acc, rowIntervals(r, (k) => k !== 'night')), all)
   return {
     windowStartMs: win.startMs,
     windowEndMs: win.endMs,
     tickStepHours,
     rows,
     event: { startMs: input.startMs, endMs: input.endMs },
-    workOverlap,
-    awakeOverlap,
   }
 }
 
