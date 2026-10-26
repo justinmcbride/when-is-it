@@ -80,7 +80,7 @@ input.invalid { border-color: #e03131; }
 .tl-row { display: grid; grid-template-columns: var(--label-w) 1fr; align-items: stretch; margin-bottom: 6px; }
 .tl-label { padding-right: 10px; display: flex; flex-direction: column; justify-content: center; min-width: 0; }
 .tl-label-main { font-weight: 600; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.tl-label-sub { color: var(--muted); font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tl-label-sub { color: var(--muted); font-size: 0.75rem; line-height: 1.25; overflow-wrap: anywhere; }
 .tl-track { position: relative; height: 44px; border-radius: 6px; overflow: hidden; background: var(--off); }
 .tl-seg { position: absolute; top: 0; bottom: 0; }
 .tl-work { background: var(--work); }
