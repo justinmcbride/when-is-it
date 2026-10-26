@@ -6,6 +6,9 @@ A tiny, serverless web app for sharing an event time across time zones — inspi
 
 Everything lives in the URL: there is no backend, no storage and no accounts.
 
+**Live:** https://justinmcbride.github.io/when-is-it/ — e.g.
+[a 90-minute team sync in Denver, also shown in London](https://justinmcbride.github.io/when-is-it/#/2026-10-26_17.30-19.00_America.Denver,Europe.London?t=Team%20sync)
+
 ## What it does
 
 - **Create** (home page): pick a title, date, start time, optional end time and the event's time zone,
@@ -75,3 +78,6 @@ Core logic is framework-free and unit-tested in `src/lib`:
 `npm run build` produces a fully static `dist/` folder built with a relative base path, so it can be
 served from any static host or sub-path — GitHub Pages, Netlify, Vercel, Cloudflare Pages, S3, etc. No
 rewrite rules are needed because routing happens in the URL hash.
+
+This repo deploys to GitHub Pages automatically on every push to `main` via
+[`.github/workflows/pages.yml`](.github/workflows/pages.yml) (Pages source: **GitHub Actions**).
