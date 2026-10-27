@@ -60,12 +60,16 @@ describe('defaultForm', () => {
   })
 
   it('never produces a DST gap notice, even on transition days', () => {
-    // Every half hour across 2026 in a DST-observing zone.
-    for (let t = Date.UTC(2026, 0, 1); t < Date.UTC(2027, 0, 1); t += 30 * 60_000) {
+    const check = (t: number) => {
       const r = formToSpec(defaultForm('America/Denver', t))
       if (!r.ok) throw new Error(r.error)
       expect(r.notes.filter((n) => n.includes('never happens'))).toEqual([])
     }
+    // Every 15 minutes around both 2026 transitions (Mar 8, Nov 1), plus a sweep of the year.
+    for (const day of [Date.UTC(2026, 2, 7), Date.UTC(2026, 9, 31)]) {
+      for (let t = day; t < day + 3 * 86_400_000; t += 15 * 60_000) check(t)
+    }
+    for (let t = Date.UTC(2026, 0, 1); t < Date.UTC(2027, 0, 1); t += 7 * 3_600_000) check(t)
   })
 })
 
