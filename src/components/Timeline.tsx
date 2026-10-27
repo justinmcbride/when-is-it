@@ -56,7 +56,11 @@ export default function Timeline({ model, nowMs, sublabels }: TimelineProps) {
               {row.ticks
                 .filter((t) => pos(t.ms) > 0.015 && pos(t.ms) < 0.985)
                 .map((t) => (
-                  <span key={t.ms} className="tl-tick" style={{ left: pct(pos(t.ms)) }}>
+                  <span
+                    key={t.ms}
+                    className={t.hour % (model.tickStepHours * 2) === 0 ? 'tl-tick' : 'tl-tick tl-tick-minor'}
+                    style={{ left: pct(pos(t.ms)) }}
+                  >
                     {formatHour(at(t.ms, row.zone))}
                   </span>
                 ))}

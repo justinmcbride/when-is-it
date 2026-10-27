@@ -6,6 +6,7 @@ import { buildTimeline } from '../lib/timeline.ts'
 import type { EventSpec } from '../lib/types.ts'
 import Timeline from './Timeline.tsx'
 import { zoneRows } from '../lib/zoneRows.ts'
+import { zoneName } from '../lib/zoneNames.ts'
 
 
 export default function EventDetails({
@@ -40,7 +41,10 @@ export default function EventDetails({
 
   return (
     <div className="event-details">
-      <p className={`status status-${status.kind}`}>{status.text}</p>
+      <p className={`status status-${status.kind}`}>
+        <span className="status-dot" aria-hidden="true" />
+        {status.text}
+      </p>
 
       <table className="zone-table">
         <thead>
@@ -63,7 +67,7 @@ export default function EventDetails({
                   ))}
                 </div>
                 <div className="zone-meta">
-                  {r.zone} · {r.s.offsetNameShort} · {offsetLabel(r.s)}
+                  {[zoneName(r.zone), r.zone, offsetLabel(r.s)].filter(Boolean).join(' · ')}
                 </div>
               </td>
               <td>

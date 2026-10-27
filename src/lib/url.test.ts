@@ -136,3 +136,39 @@ describe('serializeEvent', () => {
     expect(parsed.event).toEqual({ end: undefined, title: undefined, ...spec })
   })
 })
+
+describe('link format versions', () => {
+  // Links shared before versioning existed must keep parsing exactly as before.
+  const legacy = [
+    '#/2026-10-26_17.30_America.Denver',
+    '#/2026-10-26_17.30-19.00_America.Denver,Europe.London,Asia.Kolkata?t=Team%20sync',
+    '#/2026-10-26_22.00-01.00_Asia.Kathmandu',
+    '#/2026-10-26_09.00-2026-10-28_17.00_UTC?t=Offsite',
+  ]
+
+  it.each(legacy)('treats unversioned links as v1: %s', (hash) => {
+    const plain = parseOk(hash)
+    const explicit = parseOk(hash.replace('#/', '#/v1/'))
+    expect(explicit).toEqual(plain)
+  })
+
+  it('keeps writing v1 links without a prefix, unchanged from before versioning', () => {
+    for (const hash of legacy) {
+      expect(`#${serializeEvent(parseOk(hash).event)}`).toBe(hash)
+    }
+  })
+
+  it('reports links from a newer format version clearly', () => {
+    const r = parseEventHash('#/v2/whatever?x=1')
+    expect(r).toMatchObject({ ok: false })
+    expect(!r.ok && r.error).toContain('newer link format (v2)')
+  })
+
+  it('rejects unknown older versions', () => {
+    expect(parseEventHash('#/v0/2026-10-26_17.30_UTC')).toEqual({ ok: false, error: 'Unknown link format version (v0).' })
+  })
+
+  it('ignores unknown query parameters', () => {
+    expect(parseOk('#/2026-10-26_17.30_UTC?t=Hi&future=1').event.title).toBe('Hi')
+  })
+})

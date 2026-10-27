@@ -10,7 +10,7 @@ export function isValidZone(zone: string): boolean {
 export function detectViewerZone(): string {
   try {
     const zone = Intl.DateTimeFormat().resolvedOptions().timeZone
-    if (zone && isValidZone(zone)) return zone
+    if (zone && isValidZone(zone)) return modernZoneId(zone)
   } catch {
     // ignore and fall through
   }
@@ -19,7 +19,35 @@ export function detectViewerZone(): string {
 
 let cachedZones: string[] | undefined
 
-/** All IANA zones the runtime knows about, sorted, always including UTC. */
+/** Some engines (ICU/CLDR) still list legacy IANA names; prefer the current ones. */
+export const MODERN_ZONE_IDS: Record<string, string> = {
+  'Africa/Asmera': 'Africa/Asmara',
+  'America/Buenos_Aires': 'America/Argentina/Buenos_Aires',
+  'America/Catamarca': 'America/Argentina/Catamarca',
+  'America/Coral_Harbour': 'America/Atikokan',
+  'America/Cordoba': 'America/Argentina/Cordoba',
+  'America/Godthab': 'America/Nuuk',
+  'America/Indianapolis': 'America/Indiana/Indianapolis',
+  'America/Jujuy': 'America/Argentina/Jujuy',
+  'America/Louisville': 'America/Kentucky/Louisville',
+  'America/Mendoza': 'America/Argentina/Mendoza',
+  'Asia/Calcutta': 'Asia/Kolkata',
+  'Asia/Katmandu': 'Asia/Kathmandu',
+  'Asia/Rangoon': 'Asia/Yangon',
+  'Asia/Saigon': 'Asia/Ho_Chi_Minh',
+  'Atlantic/Faeroe': 'Atlantic/Faroe',
+  'Europe/Kiev': 'Europe/Kyiv',
+  'Pacific/Enderbury': 'Pacific/Kanton',
+  'Pacific/Ponape': 'Pacific/Pohnpei',
+  'Pacific/Truk': 'Pacific/Chuuk',
+}
+
+export function modernZoneId(zone: string): string {
+  const modern = MODERN_ZONE_IDS[zone]
+  return modern && isValidZone(modern) ? modern : zone
+}
+
+/** All IANA zones the runtime knows about (current names), sorted, always including UTC. */
 export function listZones(): string[] {
   if (!cachedZones) {
     let zones: string[] = []
@@ -28,7 +56,7 @@ export function listZones(): string[] {
     } catch {
       zones = []
     }
-    cachedZones = Array.from(new Set([...zones, 'UTC'])).sort()
+    cachedZones = Array.from(new Set([...zones.map(modernZoneId), 'UTC'])).sort()
   }
   return cachedZones
 }

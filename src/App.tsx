@@ -18,8 +18,10 @@ export default function App() {
     <div className="app">
       <header className="app-header">
         <a href="#/" className="brand">
-          🕰️ When is it?
+          <img src="./favicon.svg" alt="" />
+          When is it?
         </a>
+        <span className="tagline">One link, every time zone.</span>
       </header>
       <main>
         {route === '' ? (

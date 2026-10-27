@@ -1,38 +1,44 @@
 import { useState } from 'react'
 import { useNow } from '../hooks.ts'
 import { defaultForm, formToSpec, shiftEndDate, specToForm, type FormState } from '../lib/form.ts'
-import { detectViewerZone, isValidZone } from '../lib/time.ts'
+import { loadSavedZones, saveZones } from '../lib/storage.ts'
+import { detectViewerZone, isValidZone, zoneCity } from '../lib/time.ts'
 import type { EventSpec } from '../lib/types.ts'
 import { eventHash, shareUrl } from '../lib/url.ts'
+import { SUGGESTED_ZONES, zoneLabel, zoneName } from '../lib/zoneNames.ts'
 import CopyButton from './CopyButton.tsx'
 import EventDetails from './EventDetails.tsx'
-import ZoneInput from './ZoneInput.tsx'
+import ZonePicker from './ZonePicker.tsx'
 
-const SUGGESTED_ZONES = [
-  'UTC',
-  'America/Los_Angeles',
-  'America/New_York',
-  'Europe/London',
-  'Europe/Berlin',
-  'Asia/Kolkata',
-  'Asia/Tokyo',
-  'Australia/Sydney',
-]
+function initialForm(viewerZone: string, initial?: EventSpec): FormState {
+  if (initial) return specToForm(initial)
+  const form = defaultForm(viewerZone)
+  return { ...form, extraZones: loadSavedZones().filter((z) => z !== form.zone) }
+}
 
 export default function HomePage({ initial }: { initial?: EventSpec }) {
   const [viewerZone] = useState(detectViewerZone)
-  const [form, setForm] = useState<FormState>(() => (initial ? specToForm(initial) : defaultForm(viewerZone)))
-  const [newZone, setNewZone] = useState('')
+  const [form, setForm] = useState<FormState>(() => initialForm(viewerZone, initial))
   const nowMs = useNow()
   const result = formToSpec(form)
 
   const update = (patch: Partial<FormState>) => setForm((f) => ({ ...f, ...patch }))
-  const addZone = (zone: string) => {
-    const z = zone.trim()
-    if (!isValidZone(z)) return
-    setForm((f) => (f.extraZones.includes(z) || f.zone === z ? f : { ...f, extraZones: [...f.extraZones, z] }))
-    setNewZone('')
+  const setExtras = (extraZones: string[]) => {
+    update({ extraZones })
+    saveZones(extraZones)
   }
+  const toggleZone = (zone: string) => {
+    if (!isValidZone(zone) || zone === form.zone) return
+    setExtras(form.extraZones.includes(zone) ? form.extraZones.filter((z) => z !== zone) : [...form.extraZones, zone])
+  }
+  const addZone = (zone: string) => {
+    if (!form.extraZones.includes(zone)) toggleZone(zone)
+  }
+
+  // Suggested zones first (in a stable order), then anything else the user picked.
+  const pills = [...SUGGESTED_ZONES, ...form.extraZones.filter((z) => !SUGGESTED_ZONES.includes(z))].filter(
+    (z) => z !== form.zone,
+  )
 
   return (
     <>
@@ -44,6 +50,7 @@ export default function HomePage({ initial }: { initial?: EventSpec }) {
         </p>
 
         <form className="event-form" onSubmit={(e) => e.preventDefault()}>
+          <h3 className="form-section">What</h3>
           <label className="field wide">
             <span>Title (optional)</span>
             <input
@@ -54,6 +61,7 @@ export default function HomePage({ initial }: { initial?: EventSpec }) {
             />
           </label>
 
+          <h3 className="form-section">When</h3>
           <label className="field">
             <span>Date</span>
             <input
@@ -68,7 +76,7 @@ export default function HomePage({ initial }: { initial?: EventSpec }) {
             <input type="time" value={form.start} required onChange={(e) => update({ start: e.target.value })} />
           </label>
 
-          <label className="field checkbox wide">
+          <label className="switch wide">
             <input type="checkbox" checked={form.hasEnd} onChange={(e) => update({ hasEnd: e.target.checked })} />
             <span>Add an end time</span>
           </label>
@@ -87,54 +95,66 @@ export default function HomePage({ initial }: { initial?: EventSpec }) {
             </>
           )}
 
+          <h3 className="form-section">Where</h3>
           <label className="field wide">
             <span>Event time zone</span>
-            <ZoneInput value={form.zone} onChange={(zone) => update({ zone })} />
+            <ZonePicker value={form.zone} onSelect={(zone) => update({ zone })} />
           </label>
 
           <div className="field wide">
-            <span>Also show these time zones (optional)</span>
-            <div className="chips">
-              {form.extraZones.map((z) => (
-                <span key={z} className="chip">
-                  {z}
+            <span>Also show these time zones</span>
+            <div className="pills" role="group" aria-label="Time zones to include">
+              {pills.map((z) => {
+                const on = form.extraZones.includes(z)
+                return (
                   <button
+                    key={z}
                     type="button"
-                    aria-label={`Remove ${z}`}
-                    onClick={() => update({ extraZones: form.extraZones.filter((x) => x !== z) })}
+                    className="pill"
+                    aria-pressed={on}
+                    title={`${zoneLabel(z)} (${z})`}
+                    onClick={() => toggleZone(z)}
                   >
-                    ×
+                    <span className="pill-check" aria-hidden="true">
+                      {on ? '✓' : '+'}
+                    </span>
+                    {zoneCity(z)}
+                    {zoneName(z) && <span className="pill-name">{zoneName(z)}</span>}
                   </button>
-                </span>
-              ))}
+                )
+              })}
             </div>
-            <div className="add-zone">
-              <ZoneInput value={newZone} onChange={setNewZone} onEnter={() => addZone(newZone)} placeholder="Search zones…" />
-              <button type="button" className="button secondary" disabled={!isValidZone(newZone.trim())} onClick={() => addZone(newZone)}>
-                Add
-              </button>
-            </div>
-            <div className="suggestions">
-              {SUGGESTED_ZONES.filter((z) => z !== form.zone && !form.extraZones.includes(z)).map((z) => (
-                <button key={z} type="button" className="link-button" onClick={() => addZone(z)}>
-                  + {z}
-                </button>
-              ))}
-            </div>
+            <ZonePicker
+              onSelect={addZone}
+              exclude={[form.zone, ...form.extraZones]}
+              label="Add another time zone"
+              placeholder="Add another: city, zone name (Pacific Time) or abbreviation (CET)…"
+            />
+            <small className="hint">
+              Your picks are remembered on this device.
+              {form.extraZones.length > 0 && (
+                <>
+                  {' '}
+                  <button type="button" className="link-button" onClick={() => setExtras([])}>
+                    Clear all
+                  </button>
+                </>
+              )}
+            </small>
           </div>
         </form>
 
         {result.ok ? (
           <div className="share">
-            <label className="field wide">
-              <span>Shareable link</span>
-              <input readOnly value={shareUrl(result.spec)} onFocus={(e) => e.target.select()} />
-            </label>
-            <div className="actions">
-              <CopyButton text={shareUrl(result.spec)} label="Copy link" />
-              <a className="button secondary" href={eventHash(result.spec)}>
-                Open
-              </a>
+            <div className="field wide">
+              <label htmlFor="share-link">Shareable link</label>
+              <div className="share-row">
+                <input id="share-link" readOnly value={shareUrl(result.spec)} onFocus={(e) => e.target.select()} />
+                <CopyButton text={shareUrl(result.spec)} label="Copy link" />
+                <a className="button secondary" href={eventHash(result.spec)}>
+                  Open
+                </a>
+              </div>
             </div>
           </div>
         ) : (
