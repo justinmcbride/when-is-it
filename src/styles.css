@@ -74,6 +74,31 @@ strong { font-weight: 650; }
 .brand img { width: 26px; height: 26px; }
 .tagline { color: var(--muted); font-size: 0.9rem; }
 .app-footer { color: var(--muted); font-size: 0.85rem; text-align: center; padding: 20px 0 28px; }
+.app-footer p { margin: 0; }
+
+/* GitHub link (ported from react-pig-latin-translator): fixed corner mark with bubbles on hover/focus */
+.github-link { position: fixed; right: 16px; bottom: 16px; z-index: 10; display: block; width: 40px; height: 40px; color: var(--text); border-radius: 50%; }
+.github-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+.gh-mark { position: relative; z-index: 1; display: block; transition: transform 0.2s; }
+.github-link:hover .gh-mark, .github-link:focus-visible .gh-mark { transform: scale(1.1); }
+.gh-bubbles { position: absolute; inset: 0; pointer-events: none; }
+.gh-bubble { position: absolute; border-radius: 50%; opacity: 0; animation-timing-function: ease-out; animation-iteration-count: infinite; }
+.github-link:hover .gh-bubble, .github-link:focus-visible .gh-bubble { animation-name: gh-bubble-float; }
+@keyframes gh-bubble-float {
+  0% { transform: translate(0, 0) scale(0); opacity: 0; }
+  15% { opacity: 1; }
+  85% { opacity: 1; }
+  100% { transform: translate(var(--dx), var(--dy)) scale(1); opacity: 0; }
+}
+/* Below this width the corner gutter can't fit the mark, so it sits in the footer instead of over content. */
+@media (max-width: 1080px) {
+  .github-link { position: relative; right: auto; bottom: auto; margin: 14px auto 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gh-bubble { display: none; }
+  .gh-mark { transition: none; }
+  .github-link:hover .gh-mark, .github-link:focus-visible .gh-mark { transform: none; }
+}
 
 .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 26px 28px; margin-bottom: 18px; box-shadow: var(--shadow); }
 h1 { font-size: 1.65rem; line-height: 1.2; letter-spacing: -0.02em; margin: 0 0 6px; }

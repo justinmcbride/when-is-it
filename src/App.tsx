@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import EventPage from './components/EventPage.tsx'
+import GitHubLink from './components/GitHubLink.tsx'
 import HomePage from './components/HomePage.tsx'
 import { useHash } from './hooks.ts'
 import { parseEventHash } from './lib/url.ts'
@@ -33,7 +34,8 @@ export default function App() {
         )}
       </main>
       <footer className="app-footer">
-        Everything lives in the link — no accounts, no server.
+        <p>Everything lives in the link — no accounts, no server.</p>
+        <GitHubLink />
       </footer>
     </div>
   )
